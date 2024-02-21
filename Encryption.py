@@ -14,9 +14,8 @@ OpenSSL header. This library will still use OpenSSL, but will
 reduce the need for installation on user machines.
 Command to install required packages: pip install cryptography
 
-
 '''
-
+#packages
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
@@ -24,7 +23,10 @@ import os
 import sys
 
 '''
-Function to generate key and iv values
+Function to generate key and iv values.
+Returns:
+    - key (bytes): The generated 256-bit encryption key.
+    - iv (bytes): The generated 128-bit initialization vector.
 '''
 def generate_key_iv():
     #265bit key
@@ -36,9 +38,17 @@ def generate_key_iv():
 '''
 Function to encrypt file:
 will read in file, pad file, and write encrypted data to file.
+Parameters:
+    - input_file_path (str): Path to the input file to be encrypted.
+    - output_file_path (str): Path where the encrypted file will be saved.
+    - key (bytes): The encryption key, 256 bits in length.
+    - iv (bytes): The initialization vector, 128 bits in length.
+
+    This function reads the input file, applies PKCS7 padding, encrypts the data,
+    and writes the IV followed by the encrypted data to the output file.
 '''
 def encrypt_file(input_file_path, output_file_path, key, iv):
-    #encryption algo
+    #encryption algo setup
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     padder = padding.PKCS7(128).padder()
@@ -53,6 +63,17 @@ def encrypt_file(input_file_path, output_file_path, key, iv):
             file_out.write(encryptor.update(padded_data))
         file_out.write(encryptor.update(padder.finalize()) + encryptor.finalize())
 
+'''
+Decrypts a file encrypted by the encrypt_file function.
+
+    Parameters:
+    - input_file_path (str): Path to the encrypted file to be decrypted.
+    - output_file_path (str): Path where the decrypted file will be saved.
+    - key (bytes): The encryption key used during encryption, 256 bits in length.
+
+    Reads the IV from the start of the encrypted file, then decrypts the remaining data
+    and removes the PKCS7 padding before writing the original data to the output file.
+'''
 def decrypt_file(input_file_path, output_file_path, key):
     with open(input_file_path, 'rb') as f_in:
         iv = f_in.read(16)
@@ -66,14 +87,17 @@ def decrypt_file(input_file_path, output_file_path, key):
         f_out.write(data)
 
 if __name__ == "__main__":
+    #command line usage
     if len(sys.argv) < 4:
         print("Usage: python script.py <input_file> <output_file> [encrypt/decrypt] <key_file (for decryption)>")
         sys.exit(1)
     operation = sys.argv[3]
     if operation == "encrypt":
+        #gem the key and iv
         key, iv = generate_key_iv()
+        #encrypt file
         encrypt_file(sys.argv[1], sys.argv[2], key, iv)
-        # Save the key and IV for later decryption
+        #save the key and IV for later decryption
         with open(sys.argv[2] + ".key", "wb") as key_file:
             key_file.write(key + iv)
         print(f"File encrypted. Key and IV saved to {sys.argv[2]}.key")
